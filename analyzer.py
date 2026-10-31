@@ -2,12 +2,12 @@ import json
 import os
 import re
 import time
-import datetime
-from email.utils import parsedate_to_datetime
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+
+from freshness import freshness_flags
 
 load_dotenv()
 
@@ -54,7 +54,11 @@ RULES:
 3. Every "found" entry needs a quote copied CHARACTER FOR CHARACTER from that source's text,
    10 to 200 characters, contiguous, with no "..." and no paraphrasing.
    If you cannot quote it exactly, set status to "not_found".
-4. conflicts: only when two sources give different values for the same fact. Quote both.
+4. conflicts: only when two sources give different values for the same fact about the SAME
+   scheme or component. Compare numbers, limits, dates and names carefully. Do NOT report a
+   conflict when sources describe different schemes, different components of a scheme, or
+   different time periods; mention such differences in unanswered_questions or the checklist
+   instead. Quote both sides.
 5. outdated_signals: only for visible dates or cycles that look old. Quote the text.
 6. checklist: 4 to 8 items, ordered high priority first. Never invent URLs, phone numbers or names.
 7. Return ONLY the JSON object, with no markdown fences.
@@ -79,38 +83,6 @@ def quote_is_verified(quote, source_text):
     if len(q) < 8:
         return False
     return q in _norm(source_text)
-
-
-# ---------- rule-based freshness checks (no AI) ----------
-
-def rule_based_flags(sources):
-    today = datetime.date.today()
-    flags = []
-    for s in sources:
-        if s["cycles"]:
-            latest_end = max(int(c.split("-")[1]) for c in s["cycles"])
-            if latest_end < today.year:
-                flags.append({
-                    "source_id": s["id"],
-                    "message": f"Latest cycle mentioned is {max(s['cycles'])}, which may be an earlier cycle than the current one.",
-                })
-        lm = s.get("http_last_modified")
-        if lm:
-            try:
-                age = (datetime.datetime.now(datetime.timezone.utc) - parsedate_to_datetime(lm)).days
-                if age > 365:
-                    flags.append({
-                        "source_id": s["id"],
-                        "message": f"Page header says it was last modified about {age // 30} months ago ({lm}).",
-                    })
-            except (TypeError, ValueError):
-                pass
-        if not s["dates"] and not s["cycles"]:
-            flags.append({
-                "source_id": s["id"],
-                "message": "No dates or application cycle found in this source, so its freshness cannot be checked.",
-            })
-    return flags
 
 
 # ---------- Gemini call (with automatic model fallback) ----------
@@ -219,7 +191,7 @@ def analyze(question, sources):
         "matrix": matrix,
         "conflicts": conflicts,
         "outdated_ai": outdated,
-        "outdated_rules": rule_based_flags(sources),
+        "outdated_rules": freshness_flags(sources),
         "unanswered": raw.get("unanswered_questions", []),
         "checklist": raw.get("checklist", []),
     }
@@ -249,7 +221,6 @@ if __name__ == "__main__":
     result = analyze("What should I verify before applying for this scholarship?", srcs)
 
     print("\nTOPIC:", result["topic_type"])
-    print("\nCOVERAGE MATRIX  (FOUND = verified quote, UNVERIFIED = AI claim without matching quote, ---- = not found)")
     ids = [s["id"] for s in result["sources"]]
     print(f"{'Fact':38}" + "".join(f"{i:12}" for i in ids))
     for f in result["facts"]:
@@ -257,13 +228,9 @@ if __name__ == "__main__":
         cells = "".join(f"{row[i]['status'].upper().replace('MISSING', '----'):12}" for i in ids)
         mark = "  <== DARK SPOT" if f["dark_spot"] else ""
         print(f"{f['name'][:36]:38}{cells}{mark}")
-
     print("\nCONFLICTS:")
     for c in result["conflicts"]:
         print(" -", c["summary"], "| verified:", c["verified"])
-    print("\nRULE-BASED FLAGS:")
+    print("\nFRESHNESS FLAGS:")
     for r in result["outdated_rules"]:
         print(" -", r["source_id"], r["message"])
-    print("\nCHECKLIST:")
-    for item in result["checklist"]:
-        print(f" [{item['priority']}] {item['action']}")
