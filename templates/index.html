@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digital Dark Spot — find what your sources aren't telling you</title>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c232d;--border:#2b3440;--text:#e6edf3;--muted:#9aa7b4;
+--amber:#f5b84b;--teal:#2dd4bf;--red:#f87171;--violet:#b39dfa;--radius:14px;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+background:radial-gradient(1100px 480px at 75% -10%,#1f2733 0,transparent 60%),var(--bg);min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 80px}
+.hero{padding:24px 0 8px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.3px;color:var(--muted)}
+.spot{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#2a323d 0,#000 70%);
+box-shadow:0 0 0 2px var(--amber),0 0 18px rgba(245,184,75,.55)}
+h1{font-size:clamp(28px,4.4vw,44px);line-height:1.12;margin:14px 0 8px;max-width:760px}
+h1 em{font-style:normal;color:var(--amber)}
+.sub{color:var(--muted);max-width:720px;margin:0 0 6px}
+h2{font-size:20px;margin:0}
+h3{font-size:16px;margin:0 0 8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-top:20px}
+.card.inner{background:var(--surface2);margin-top:12px;padding:16px}
+label{display:block;font-weight:600;margin-bottom:6px}
+input[type=text],input[type=url],textarea{width:100%;background:#0d1117;color:var(--text);border:1px solid var(--border);
+border-radius:10px;padding:11px 12px;font:inherit}
+textarea{resize:vertical}
+input:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.src-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin:22px 0 10px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;cursor:pointer}
+.ghost{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 12px}
+.ghost:hover{border-color:var(--amber)}
+.primary{background:var(--amber);color:#1a1300;border:0;border-radius:12px;padding:13px 22px;font-weight:700;font-size:17px}
+.primary:hover{filter:brightness(1.08)}
+.primary:disabled{opacity:.55;cursor:wait}
+.srcrow{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;background:#12171e}
+.srcrow-top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.srcrow-top .lbl{flex:1}
+.tag{font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.hint{color:var(--muted);font-size:14px;margin:6px 0 16px}
+#status{margin-top:14px;min-height:24px;color:var(--muted)}
+#status.err{color:var(--red)}
+#status ul{margin:8px 0 0;padding-left:20px;color:var(--muted)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--amber);
+border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:6px}
+.stat{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat b{display:block;font-size:30px;line-height:1.1}
+.stat span{color:var(--muted);font-size:14px}
+.stat.s-dark b{color:var(--amber)}.stat.s-conf b{color:var(--red)}.stat.s-fresh b{color:var(--violet)}.stat.s-ok b{color:var(--teal)}
+.scroll{overflow-x:auto;margin-top:12px}
+table{border-collapse:separate;border-spacing:6px;width:100%;min-width:560px}
+th{text-align:left;font-weight:600;padding:6px 8px;vertical-align:bottom}
+thead th{color:var(--muted);font-size:14px}
+th.fact{min-width:200px}
+th.fact small{display:block;color:var(--muted);font-weight:400;font-size:13px;margin-top:2px}
+td{vertical-align:top;min-width:150px}
+.cell{display:block;width:100%;text-align:left;border:1px solid transparent;border-radius:10px;padding:9px 11px;color:var(--text);font:inherit;min-height:58px}
+.cell .cw{display:block;font-weight:700;font-size:14px}
+.cell .cv{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.cell.found{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.5)}
+.cell.found .cw{color:var(--teal)}
+.cell.unverified{background:repeating-linear-gradient(45deg,rgba(245,184,75,.14) 0 6px,rgba(245,184,75,.05) 6px 12px);border-color:rgba(245,184,75,.6)}
+.cell.unverified .cw{color:var(--amber)}
+.cell.found:hover,.cell.unverified:hover{filter:brightness(1.25);cursor:pointer}
+.cell.missing{background:#04060a;border:1px dashed #455063;color:var(--muted);cursor:default;font-weight:600;font-size:14px}
+tr.dark .cell.missing{animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,184,75,0)}50%{box-shadow:0 0 14px 1px rgba(245,184,75,.35)}}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;border:1px solid var(--border);vertical-align:middle}
+.badge.dark-b{color:var(--amber);border-color:rgba(245,184,75,.6)}
+.badge.ok{color:var(--teal);border-color:rgba(45,212,191,.5)}
+.badge.warn{color:var(--amber);border-color:rgba(245,184,75,.6)}
+.badge.ai{color:var(--violet);border-color:rgba(179,157,250,.55)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;color:var(--muted);font-size:14px;margin-top:10px}
+.claims{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+blockquote{margin:0;background:#0d1117;border-left:4px solid var(--red);border-radius:8px;padding:10px 12px;font-size:15px}
+blockquote strong{display:block;color:var(--muted);font-size:13px;margin-bottom:4px}
+blockquote small{display:block;margin-top:6px;color:var(--muted)}
+.empty{color:var(--muted);margin:10px 0 0}
+.row{display:flex;gap:10px;align-items:flex-start}
+ul.plain{list-style:none;padding:0;margin:10px 0 0}
+ul.plain li{padding:10px 0;border-top:1px solid var(--border)}
+.chk{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--border)}
+.chk input{width:20px;height:20px;margin-top:3px;accent-color:var(--amber)}
+.chk.done .act{text-decoration:line-through;color:var(--muted)}
+.pri{font-size:12px;font-weight:800;text-transform:uppercase;border-radius:6px;padding:2px 8px;margin-right:8px}
+.pri.high{background:rgba(248,113,113,.18);color:var(--red)}
+.pri.medium{background:rgba(245,184,75,.18);color:var(--amber)}
+.pri.low{background:rgba(154,167,180,.18);color:var(--muted)}
+.why{color:var(--muted);font-size:14px;margin-top:2px}
+.disclaimer{margin-top:20px;color:var(--muted);font-size:14px;border:1px dashed var(--border);border-radius:12px;padding:12px 14px}
+#results>section{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#veil{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
+#drawer{position:fixed;top:0;right:0;height:100%;width:min(520px,100%);background:var(--surface);border-left:1px solid var(--border);
+z-index:21;padding:22px;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease}
+#drawer.open{transform:none}
+#drawer h3{font-size:20px}
+#drawer .ctx{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:15px;white-space:pre-wrap;word-break:break-word}
+mark{background:rgba(245,184,75,.35);color:var(--text);padding:1px 2px;border-radius:3px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="logo"><span class="spot" aria-hidden="true"></span> DIGITAL DARK SPOT</div>
+    <h1>Find what your sources <em>aren't telling you.</em></h1>
+    <p class="sub">Add the pages you're relying on. The app shows what's missing, where sources disagree, what looks outdated, and what to verify next, with the exact quote behind every claim.</p>
+  </header>
+
+  <section class="card" id="input">
+    <label for="question">Your research question</label>
+    <input type="text" id="question" maxlength="500" placeholder="e.g. What should I verify before applying for this scholarship?">
+
+    <div class="src-head">
+      <h2>Sources <span class="badge" id="count">0 / 6</span></h2>
+      <div class="btns">
+        <button type="button" class="ghost" id="addUrl">+ Add URL</button>
+        <button type="button" class="ghost" id="addText">+ Paste text</button>
+        <button type="button" class="ghost" id="sample">Load sample sources</button>
+      </div>
+    </div>
+    <div id="sources"></div>
+    <p class="hint">Use 2–6 sources: ideally one official page and one outside page. If a site can't be read (it needs JavaScript, or it's a PDF), copy its text and use “Paste text”.</p>
+    <button type="button" class="primary" id="go">Find the dark spots</button>
+    <div id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <div id="results" hidden></div>
+</div>
+
+<div id="veil" hidden></div>
+<aside id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" aria-hidden="true">
+  <button type="button" class="ghost" id="dClose" aria-label="Close evidence panel">✕ Close</button>
+  <div id="dBody"></div>
+</aside>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const trunc = (s, n) => (s || "").length > n ? s.slice(0, n - 1) + "…" : (s || "");
+const MAX = 6;
+const sourcesEl = $("sources"), resultsEl = $("results"), goBtn = $("go");
+let lastResult = null, lastFocus = null;
+
+/* ---------- source rows ---------- */
+function updateCount(){ $("count").textContent = sourcesEl.children.length + " / " + MAX; }
+function addRow(type, data = {}){
+  if (sourcesEl.children.length >= MAX) return showStatus("You can add up to " + MAX + " sources.", true);
+  const row = document.createElement("div");
+  row.className = "srcrow"; row.dataset.type = type;
+  row.innerHTML =
+    '<div class="srcrow-top"><span class="tag">' + (type === "url" ? "URL" : "Pasted text") + '</span>' +
+    '<input class="lbl" type="text" maxlength="80" placeholder="Label (e.g. Official notice)" aria-label="Source label">' +
+    '<button type="button" class="ghost rm" aria-label="Remove this source">✕</button></div>' +
+    (type === "url"
+      ? '<input class="val" type="url" placeholder="https://…" aria-label="Source URL">'
+      : '<textarea class="val" rows="4" placeholder="Paste the page text here…" aria-label="Source text"></textarea>');
+  row.querySelector(".lbl").value = data.label || "";
+  row.querySelector(".val").value = data.value || "";
+  row.querySelector(".rm").onclick = () => { row.remove(); updateCount(); };
+  sourcesEl.appendChild(row); updateCount();
+}
+function collect(){
+  return [...sourcesEl.querySelectorAll(".srcrow")].map(r => {
+    const type = r.dataset.type, label = r.querySelector(".lbl").value.trim(), v = r.querySelector(".val").value.trim();
+    return type === "url" ? {type, label, value: v} : {type, label, text: v};
+  }).filter(s => s.value || s.text);
+}
+$("addUrl").onclick = () => addRow("url");
+$("addText").onclick = () => addRow("text");
+$("sample").onclick = () => {
+  sourcesEl.innerHTML = "";
+  addRow("text", {label: "Official notice (SAMPLE)", value:
+    "Example Merit Scholarship (fictional test page). Official notice. Applications for the 2023-24 cycle are open until 15 March 2024. Eligibility: the annual family income must be below Rs 2,50,000. Documents required: income certificate, community certificate and Aadhaar card. Applications are submitted through the official scholarship portal. Last updated: 2 January 2024."});
+  addRow("text", {label: "Blog guide (SAMPLE)", value:
+    "Scholarship guide blog (fictional test page). Students whose family income is below Rs 3,00,000 can apply for the Example Merit Scholarship. You will need an income certificate and your bank passbook. Apply before 10 April, and keep a printout of your application. Posted on 20 February 2024."});
+  if (!$("question").value.trim()) $("question").value = "What should I verify before applying for this scholarship?";
+};
+addRow("url"); addRow("url");
+
+/* ---------- status ---------- */
+function showStatus(msg, isErr = false, skipped = null, busy = false){
+  const el = $("status");
+  el.className = isErr ? "err" : "";
+  let html = (busy ? '<span class="spinner" aria-hidden="true"></span>' : "") + esc(msg);
+  if (skipped && skipped.length) html += "<ul>" + skipped.map(s => "<li><b>" + esc(s.label) + ":</b> " + esc(s.error) + "</li>").join("") + "</ul>";
+  el.innerHTML = html;
+}
+
+/* ---------- run analysis ---------- */
+goBtn.onclick = async () => {
+  const question = $("question").value.trim(), sources = collect();
+  if (question.length < 5) return showStatus("Please enter your research question.", true);
+  if (sources.length < 2) return showStatus("Add at least 2 sources (URLs or pasted text).", true);
+  goBtn.disabled = true; resultsEl.hidden = true;
+  const steps = ["Fetching and reading your sources…", "Asking the AI to audit them for gaps and conflicts…", "Checking every quote against the source text…"];
+  let i = 0; showStatus(steps[0], false, null, true);
+  const timer = setInterval(() => { i = Math.min(i + 1, steps.length - 1); showStatus(steps[i], false, null, true); }, 6000);
+  try {
+    const res = await fetch("/api/analyze", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({question, sources})});
+    const data = await res.json();
+    if (!res.ok) { showStatus(data.error || "Something went wrong.", true, data.skipped); return; }
+    showStatus(data.skipped && data.skipped.length ? "Some sources could not be read and were left out:" : "", false, data.skipped);
+    render(data);
+  } catch (e) {
+    showStatus("Could not reach the server. Is it still running?", true);
+  } finally { clearInterval(timer); goBtn.disabled = false; }
+};
+
+/* ---------- render results ---------- */
+function render(r){
+  lastResult = r;
+  const label = id => { const s = r.sources.find(x => x.id === id); return s ? s.label : id; };
+  const foundCount = Object.values(r.matrix).reduce((n, row) => n + Object.values(row).filter(c => c.status === "found").length, 0);
+  const darkCount = r.facts.filter(f => f.dark_spot).length;
+  const flagCount = r.outdated_rules.length + r.outdated_ai.length;
+
+  const head = r.sources.map(s => '<th scope="col" title="' + esc(s.title || s.label) + '">' + esc(s.id) + " · " + esc(trunc(s.label, 28)) + "</th>").join("");
+  const rows = r.facts.map(f => {
+    const cells = r.sources.map(s => {
+      const c = (r.matrix[f.id] || {})[s.id] || {status: "missing"};
+      if (c.status === "missing") return '<td><div class="cell missing">● Not found</div></td>';
+      const word = c.status === "found" ? "✓ Found" : "⚠ Unverified";
+      return '<td><button type="button" class="cell ' + c.status + '" data-fid="' + esc(f.id) + '" data-sid="' + esc(s.id) + '">' +
+        '<span class="cw">' + word + '</span><span class="cv">' + esc(trunc(c.value, 70)) + "</span></button></td>";
+    }).join("");
+    return '<tr class="' + (f.dark_spot ? "dark" : "") + '"><th scope="row" class="fact">' + esc(f.name) +
+      (f.dark_spot ? ' <span class="badge dark-b">Dark spot</span>' : "") + "<small>" + esc(f.why || "") + "</small></th>" + cells + "</tr>";
+  }).join("");
+
+  const conflicts = r.conflicts.length ? r.conflicts.map(c =>
+    '<article class="card inner"><h3>' + esc(c.summary) + "</h3>" +
+    '<span class="badge ' + (c.verified ? "ok" : "warn") + '">' + (c.verified ? "✓ Both quotes verified in the sources" : "⚠ Quote check failed — treat with caution") + "</span>" +
+    '<div class="claims">' + c.claims.map(cl =>
+      "<blockquote><strong>" + esc(label(cl.source_id)) + "</strong>“" + esc(cl.quote) + "”<small>" + (cl.verified ? "✓ verified in source" : "⚠ not found in source text") + "</small></blockquote>").join("") +
+    "</div></article>").join("") : '<p class="empty">No conflicts were found between these sources.</p>';
+
+  const fresh = [
+    ...r.outdated_rules.map(o => ({kind: "Rule-based check", cls: "ok", src: o.source_id, msg: o.message})),
+    ...r.outdated_ai.map(o => ({kind: "AI signal", cls: "ai", src: o.source_id, msg: o.reason, quote: o.quote, verified: o.verified}))
+  ];
+  const freshHtml = fresh.length ? '<ul class="plain">' + fresh.map(o =>
+    "<li><span class=\"badge " + o.cls + "\">" + o.kind + "</span> <b>" + esc(label(o.src)) + "</b><div>" + esc(o.msg) + "</div>" +
+    (o.quote ? '<div class="why">“' + esc(o.quote) + "” " + (o.verified ? "✓ verified" : "⚠ not found in source") + "</div>" : "") + "</li>").join("") + "</ul>"
+    : '<p class="empty">No freshness problems were detected.</p>';
+
+  const unanswered = (r.unanswered || []).length ? '<ul class="plain">' + r.unanswered.map(q => "<li>" + esc(q) + "</li>").join("") + "</ul>" : '<p class="empty">None listed.</p>';
+
+  const order = {high: 0, medium: 1, low: 2};
+  const checklist = [...(r.checklist || [])].sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
+  const checkHtml = checklist.map((c, i) =>
+    '<label class="chk" for="ck' + i + '"><input type="checkbox" id="ck' + i + '"><div><div class="act"><span class="pri ' + esc(c.priority) + '">' + esc(c.priority) + "</span>" + esc(c.action) + "</div>" +
+    '<div class="why">' + esc(c.reason) + (c.where_to_verify ? " · <b>Verify with:</b> " + esc(c.where_to_verify) : "") + "</div></div></label>").join("");
+
+  resultsEl.innerHTML =
+    '<section class="card"><h2>Overview</h2><div class="stats">' +
+    '<div class="stat s-dark"><b>' + darkCount + "</b><span>dark spots (facts no source covers)</span></div>" +
+    '<div class="stat s-conf"><b>' + r.conflicts.length + "</b><span>conflicts between sources</span></div>" +
+    '<div class="stat s-fresh"><b>' + flagCount + "</b><span>freshness flags</span></div>" +
+    '<div class="stat s-ok"><b>' + foundCount + "</b><span>claims with verified quotes</span></div></div></section>" +
+    '<section class="card"><h2>Coverage matrix</h2><p class="hint">Rows are facts a person needs to act on your question. Click a coloured cell to see the exact evidence.</p>' +
+    '<div class="scroll"><table><thead><tr><th scope="col">Fact</th>' + head + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+    '<div class="legend"><span>✓ Found = the quote exists in the source</span><span>⚠ Unverified = the AI claimed it but the quote could not be matched</span><span>● Not found = this source doesn\'t cover it</span></div></section>' +
+    '<section class="card"><h2>Conflicts between sources</h2>' + conflicts + "</section>" +
+    '<section class="card"><h2>Freshness</h2>' + freshHtml + "</section>" +
+    '<section class="card"><h2>Questions the sources don\'t answer</h2>' + unanswered + "</section>" +
+    '<section class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>What to verify next</h2><button type="button" class="ghost" id="copyList">Copy checklist</button></div>' + checkHtml + "</section>" +
+    '<p class="disclaimer"><b>How to read this:</b> “Found” and “verified” mean the exact quote was located in the source text by code. Dark spots, conflicts and checklist items are <b>potential</b> gaps and signals from an AI, not guaranteed facts. Confirm important details with the official source.</p>';
+
+  resultsEl.hidden = false;
+  resultsEl.scrollIntoView({behavior: "smooth", block: "start"});
+  resultsEl.querySelectorAll('.chk input').forEach(cb => cb.addEventListener("change", () => cb.closest(".chk").classList.toggle("done", cb.checked)));
+  $("copyList").onclick = async (e) => {
+    const text = "Verify next — " + r.question + "\n" + checklist.map((c, i) => (i + 1) + ". [" + c.priority + "] " + c.action + " (" + c.reason + ")").join("\n");
+    try { await navigator.clipboard.writeText(text); e.target.textContent = "Copied ✓"; } catch { e.target.textContent = "Copy failed"; }
+    setTimeout(() => e.target.textContent = "Copy checklist", 2000);
+  };
+}
+
+/* ---------- evidence drawer ---------- */
+resultsEl.addEventListener("click", e => {
+  const b = e.target.closest("button.cell");
+  if (b) openDrawer(b.dataset.fid, b.dataset.sid, b);
+});
+function openDrawer(fid, sid, trigger){
+  const r = lastResult; if (!r) return;
+  const fact = r.facts.find(f => f.id === fid), src = r.sources.find(s => s.id === sid), c = r.matrix[fid][sid];
+  const text = (r.source_texts || {})[sid] || "";
+  const q = (c.quote || "").trim();
+  const idx = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  let ctx;
+  if (idx >= 0) {
+    const a = Math.max(0, idx - 160), z = Math.min(text.length, idx + q.length + 160);
+    ctx = (a > 0 ? "…" : "") + esc(text.slice(a, idx)) + "<mark>" + esc(text.slice(idx, idx + q.length)) + "</mark>" + esc(text.slice(idx + q.length, z)) + (z < text.length ? "…" : "");
+  } else ctx = esc(q || "(no quote)");
+  $("dBody").innerHTML =
+    '<h3 id="dTitle">' + esc(fact.name) + "</h3>" +
+    '<p><span class="badge ' + (c.status === "found" ? "ok" : "warn") + '">' + (c.status === "found" ? "✓ Quote verified in source" : "⚠ Unverified") + "</span></p>" +
+    "<p><b>Source:</b> " + esc(src.label) + (src.url ? '<br><a href="' + esc(src.url) + '" target="_blank" rel="noopener noreferrer">' + esc(trunc(src.url, 60)) + "</a>" : " (pasted text)") + "</p>" +
+    "<p><b>What it says (AI summary):</b> " + esc(c.value) + "</p>" +
+    (c.status === "found" ? "<p><b>Exact text in the source:</b></p>" : '<p class="why">The AI claimed this, but its quote could not be matched to the source, so it is not treated as evidence.</p><p><b>Quote the AI gave:</b></p>') +
+    '<div class="ctx">' + ctx + "</div>";
+  lastFocus = trigger || document.activeElement;
+  $("veil").hidden = false; $("drawer").classList.add("open"); $("drawer").setAttribute("aria-hidden", "false");
+  $("dClose").focus();
+}
+function closeDrawer(){
+  $("veil").hidden = true; $("drawer").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true");
+  if (lastFocus) lastFocus.focus();
+}
+$("dClose").onclick = closeDrawer; $("veil").onclick = closeDrawer;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("drawer").classList.contains("open")) closeDrawer(); });
+</script>
+</body>
+</html>
