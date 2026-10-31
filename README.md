@@ -42,8 +42,13 @@ AI findings are potential gaps and signals, not guaranteed facts. Always confirm
 2. Create a virtual environment: `python -m venv venv`
 3. Activate it: `venv\Scripts\activate`
 4. Install dependencies: `pip install -r requirements.txt`
-5. Create a file named `.env` in the project folder and add your Gemini API key:
-   `GEMINI_API_KEY=your_key_here`
+5. Create a file named `.env` in the project folder:
+   ```
+   GEMINI_API_KEY=your_key_here
+   GEMINI_MODEL=gemini-3.5-flash
+   GEMINI_FALLBACKS=gemini-3.8-flash,gemini-3.1-flash-lite
+   ```
+   `GEMINI_FALLBACKS` is optional. These backup models are used if the main model is busy.
 6. Start the app: `python app.py`
 7. Open the local address shown in the terminal (usually http://127.0.0.1:5000).
 
